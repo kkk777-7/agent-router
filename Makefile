@@ -421,6 +421,11 @@ helm-test: helm-package  ## Test the helm chart with a dummy version.
 	@! $(GO_TOOL) helm template ${HELM_CHART_PATH} --set controller.mcp.sessionEncryption.fallback.existingSecret=my-fallback-secret | grep -q -- "mcp-session-encryption-fallback"
 	@! $(GO_TOOL) helm template ${HELM_CHART_PATH} --set controller.mcp.sessionEncryption.fallback.existingSecret=my-fallback-secret --set controller.mcp.sessionEncryption.fallback.seed=my-old-seed | grep -q -- "mcp-session-encryption-fallback"
 	@! $(GO_TOOL) helm template ${HELM_CHART_PATH} --set controller.mcp.sessionEncryption.fallback.existingSecret=my-fallback-secret --set controller.mcp.sessionEncryption.fallback.seed=my-old-seed | grep -q -- "bXktb2xkLXNlZWQ="
+	@$(GO_TOOL) helm template ${HELM_CHART_PATH} | grep -q -- 'app.kubernetes.io/version: "${TAG}"'
+	@# "+" (SemVer build metadata) is not allowed in a label value, so the version label replaces it with "_".
+	@$(GO_TOOL) helm package ./manifests/charts/ai-gateway-helm --app-version ${TAG}+build.1 --version ${HELM_CHART_VERSION} -d ${OUTPUT_DIR}/app-version-build-metadata
+	@$(GO_TOOL) helm template ${OUTPUT_DIR}/app-version-build-metadata/ai-gateway-helm-${HELM_CHART_VERSION}.tgz | grep -q -- 'app.kubernetes.io/version: "${TAG}_build.1"'
+	@! $(GO_TOOL) helm template ${OUTPUT_DIR}/app-version-build-metadata/ai-gateway-helm-${HELM_CHART_VERSION}.tgz | grep -q -- 'app.kubernetes.io/version: "${TAG}+build.1"'
 
 # This pushes the helm chart to the OCI registry, requiring the access to the registry endpoint.
 .PHONY: helm-push
